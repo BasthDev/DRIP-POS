@@ -2,6 +2,7 @@ import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
 import { useDrawer } from '@/constants/drawerContext';
 import { DRAWER_MENU_ITEMS } from '@/constants/menu';
+import { supabase } from '@/lib/supabase';
 import { router, usePathname } from 'expo-router';
 import {
   ChevronDown,
@@ -123,8 +124,62 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
   const slideAnim = useRef(new Animated.Value(position === 'left' ? -DRAWER_WIDTH : DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Submenu states
+  // Submenu state
   const [masterOpen, setMasterOpen] = useState(false);
+
+  // Dynamic Org & Store Names
+  const [displayOrg, setDisplayOrg] = useState<string>('DRIP POS');
+  const [displayStore, setDisplayStore] = useState<string>('Main Branch');
+
+  // Fetch dynamic business & store info when drawer opens or user changes
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    const fetchOrgAndStore = async () => {
+      try {
+        // Fetch active Store Name
+        const { data: storeData } = await supabase
+          .from('stores')
+          .select('name, organization_id')
+          .limit(1);
+
+        if (!isMounted) return;
+
+        if (storeData && storeData[0]) {
+          setDisplayStore(storeData[0].name || 'Main Branch');
+
+          if (storeData[0].organization_id) {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', storeData[0].organization_id)
+              .single();
+
+            if (orgData?.name && isMounted) {
+              setDisplayOrg(orgData.name);
+              return;
+            }
+          }
+        }
+
+        // Fallback: check user metadata or business name
+        if ((user as any)?.businessName) {
+          setDisplayOrg((user as any).businessName);
+        } else if (user?.name) {
+          setDisplayOrg(user.name + "'s Business");
+        }
+      } catch (e) {
+        console.log('Error fetching org/store in drawer:', e);
+      }
+    };
+
+    fetchOrgAndStore();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, isDrawerOpen]);
 
   // Group route mappings
   const masterRoutes = ['/tables', '/ingredients', '/recipes', '/category-parents', '/categories', '/products'];
@@ -174,13 +229,11 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
   );
 
   const displayName = user?.name || 'Staff Member';
-  const displayOrg = 'DRIP POS';
-  const displayStore = 'Main Branch';
   const avatarLetter = (displayName[0] || 'U').toUpperCase();
 
   return (
     <Modal transparent visible={modalVisible} animationType="none" onRequestClose={closeDrawer}>
-      {/* Tap outside backdrop to dismiss */}
+      {/* Backdrop */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
       </TouchableWithoutFeedback>
@@ -200,7 +253,7 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
             style,
           ]}
         >
-          {/* TOP STORE HEADER SECTION WITH THEME TOGGLE */}
+          {/* TOP STORE & ORGANIZATION HEADER SECTION */}
           <View style={[styles.storeHeader, { borderBottomColor: theme.border }]}>
             <View style={styles.storeHeaderLeft}>
               <View style={[styles.storeLogoBox, { backgroundColor: PRIMARY + '15' }]}>
@@ -250,7 +303,8 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
                 />
               ))}
 
-              {/* Management Dropdown Section Example */}
+              {/* 
+              // Management Dropdown Section (Commented out as requested, kept for reference):
               <TouchableOpacity
                 style={styles.groupHeader}
                 activeOpacity={0.8}
@@ -276,6 +330,7 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
                   <DrawerItem label="Ingredients" icon={Package} route="/ingredients" pathname={pathname} onNavigate={handleNavigation} nested isLast theme={theme} primaryColor={PRIMARY} />
                 </View>
               )}
+              */}
             </View>
           </ScrollView>
 

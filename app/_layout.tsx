@@ -2,32 +2,83 @@ import { DripDrawer } from '@/components/drawer';
 import { AuthProvider, useAuth } from '@/constants/auth';
 import { ThemeProvider, useTheme } from '@/constants/colorTheme';
 import { DrawerProvider } from '@/constants/drawerContext';
+import { supabase } from '@/lib/supabase';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, View } from 'react-native';
 
 function NavigationGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [storeChecked, setStoreChecked] = useState(false);
+  const [hasStore, setHasStore] = useState<boolean | null>(null);
 
+  const currentRoute = segments[0] as string | undefined;
+
+  // 1. Check store existence whenever user changes OR when on store-setup
   useEffect(() => {
-    if (authLoading) return;
+    let isMounted = true;
 
-    const currentRoute = segments[0] as string | undefined;
-    const inAuthGroup = currentRoute === 'login' || currentRoute === 'register';
-
-    // Unauthenticated -> Send to login if not already in auth
-    if (!user && !inAuthGroup) {
-      router.replace('/login');
+    if (!user) {
+      setHasStore(null);
+      setStoreChecked(true);
       return;
     }
 
-    // Authenticated and has store, but currently on auth screens -> Send to Home / POS
-    if (user && inAuthGroup) {
-      router.replace('/' as any);
+    const checkStore = async () => {
+      try {
+        const { data: storeData } = await supabase
+          .from('stores')
+          .select('id')
+          .limit(1);
+
+        if (isMounted) {
+          const storeExists = storeData !== null && storeData.length > 0;
+          setHasStore(storeExists);
+          setStoreChecked(true);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setHasStore(true); // Fallback to avoid infinite block
+          setStoreChecked(true);
+        }
+      }
+    };
+
+    checkStore();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, currentRoute]);
+
+  // 2. Perform route guards without unmounting navigation stack
+  useEffect(() => {
+    if (authLoading || !storeChecked) return;
+
+    const inAuthGroup = currentRoute === 'login' || currentRoute === 'register';
+
+    if (!user) {
+      if (!inAuthGroup) {
+        router.replace('/login');
+      }
+      return;
     }
-  }, [user, authLoading, segments]);
+
+    if (hasStore === false) {
+      if (currentRoute !== 'store-setup') {
+        router.replace('/store-setup' as any);
+      }
+      return;
+    }
+
+    if (hasStore === true) {
+      if (inAuthGroup || currentRoute === 'store-setup') {
+        router.replace('/' as any);
+      }
+    }
+  }, [user, authLoading, storeChecked, hasStore, currentRoute]);
 
   if (authLoading) {
     return (

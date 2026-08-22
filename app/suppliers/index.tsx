@@ -2,72 +2,25 @@ import { DripButton } from '@/components/Button';
 import { DripContainer } from '@/components/Container';
 import { Header } from '@/components/Header';
 import { DripInput } from '@/components/Input';
+import { DripSearchBar } from '@/components/SearchBar';
+import { DripSheet } from '@/components/Sheet';
 import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
 import { Supplier, SupplierFilter, SupplierFormData, SupplierValidationErrors } from '@/constants/supplier/types';
-import { Building2, Calendar, DollarSign, Edit, Mail, MapPin, Package, Phone, Plus, Search, Star, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-
-
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    name: 'Fresh Foods Distributors',
-    contactPerson: 'John Smith',
-    email: 'john@freshfoods.com',
-    phone: '+1-555-0101',
-    address: '123 Market Street',
-    city: 'San Francisco',
-    state: 'CA',
-    postalCode: '94102',
-    country: 'USA',
-    taxId: 'TX-123456789',
-    paymentTerms: 'Net 30',
-    notes: 'Primary supplier for fresh vegetables',
-    isActive: true,
-    rating: 5,
-    totalOrders: 45,
-    totalSpent: 125000,
-    lastOrderDate: '2026-08-20',
-    createdAt: '2026-01-15',
-    updatedAt: '2026-08-20',
-  },
-  {
-    id: '2',
-    name: 'Beverage Co.',
-    contactPerson: 'Sarah Johnson',
-    email: 'sarah@beverageco.com',
-    phone: '+1-555-0102',
-    address: '456 Drink Avenue',
-    city: 'Los Angeles',
-    state: 'CA',
-    postalCode: '90001',
-    country: 'USA',
-    taxId: 'TX-987654321',
-    paymentTerms: 'Net 15',
-    notes: 'Exclusive beverage supplier',
-    isActive: true,
-    rating: 4,
-    totalOrders: 32,
-    totalSpent: 89000,
-    lastOrderDate: '2026-08-18',
-    createdAt: '2026-02-01',
-    updatedAt: '2026-08-18',
-  },
-];
+import { supabase } from '@/lib/supabase';
+import { Building2, Calendar, DollarSign, Edit, Mail, MapPin, Package, Phone, Plus, Star, Trash2 } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SuppliersScreen() {
   const { theme } = useTheme();
   const { hasPermission } = useAuth();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<SupplierFilter>({
     search: '',
     status: 'all',
@@ -94,6 +47,54 @@ export default function SuppliersScreen() {
   const canEdit = hasPermission('inventory.edit');
   const canDelete = hasPermission('inventory.delete');
 
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
+
+  const fetchSuppliers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.log('Error fetching suppliers:', error);
+        setSuppliers([]);
+      } else if (data) {
+        const formatted: Supplier[] = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          contactPerson: item.contact_person || item.contactPerson || '',
+          email: item.email || '',
+          phone: item.phone || '',
+          address: item.address || '',
+          city: item.city || '',
+          state: item.state || '',
+          postalCode: item.postal_code || item.postalCode || '',
+          country: item.country || '',
+          taxId: item.tax_id || item.taxId || '',
+          paymentTerms: item.payment_terms || item.paymentTerms || '',
+          notes: item.notes || '',
+          isActive: item.is_active ?? true,
+          rating: item.rating ?? 5,
+          totalOrders: item.total_orders ?? 0,
+          totalSpent: item.total_spent ?? 0,
+          lastOrderDate: item.last_order_date || null,
+          createdAt: item.created_at || new Date().toISOString(),
+          updatedAt: item.updated_at || new Date().toISOString(),
+        }));
+        setSuppliers(formatted);
+      }
+    } catch (e) {
+      console.log('Error fetching suppliers:', e);
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredSuppliers = suppliers
     .filter(supplier => {
       const matchesSearch = supplier.name.toLowerCase().includes(filter.search.toLowerCase()) ||
@@ -115,10 +116,6 @@ export default function SuppliersScreen() {
           return (a.totalOrders - b.totalOrders) * modifier;
         case 'totalSpent':
           return (a.totalSpent - b.totalSpent) * modifier;
-        case 'lastOrderDate':
-          if (!a.lastOrderDate) return 1;
-          if (!b.lastOrderDate) return -1;
-          return new Date(a.lastOrderDate).getTime() - new Date(b.lastOrderDate).getTime() * modifier;
         default:
           return 0;
       }
@@ -126,7 +123,6 @@ export default function SuppliersScreen() {
 
   const validateForm = (): boolean => {
     const newErrors: SupplierValidationErrors = {};
-    
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.contactPerson.trim()) newErrors.contactPerson = 'Contact person is required';
     if (!formData.email.trim()) {
@@ -136,13 +132,28 @@ export default function SuppliersScreen() {
     }
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
+
+    const payload = {
+      name: formData.name,
+      contact_person: formData.contactPerson,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      postal_code: formData.postalCode,
+      country: formData.country,
+      tax_id: formData.taxId,
+      payment_terms: formData.paymentTerms,
+      notes: formData.notes,
+      updated_at: new Date().toISOString(),
+    };
 
     if (isEditing && selectedSupplier) {
       setSuppliers(suppliers.map(s => 
@@ -150,39 +161,61 @@ export default function SuppliersScreen() {
           ? { ...s, ...formData, updatedAt: new Date().toISOString() }
           : s
       ));
+      setSelectedSupplier({ ...selectedSupplier, ...formData, updatedAt: new Date().toISOString() });
+
+      try {
+        await supabase.from('suppliers').update(payload).eq('id', selectedSupplier.id);
+      } catch (e) {
+        console.log('Error updating supplier in DB:', e);
+      }
     } else {
-      const newSupplier: Supplier = {
-        id: Date.now().toString(),
-        ...formData,
-        isActive: true,
-        rating: 0,
-        totalOrders: 0,
-        totalSpent: 0,
-        lastOrderDate: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setSuppliers([...suppliers, newSupplier]);
+      try {
+        const { data, error } = await supabase.from('suppliers').insert([{
+          ...payload,
+          is_active: true,
+          rating: 5,
+          total_orders: 0,
+          total_spent: 0,
+          created_at: new Date().toISOString(),
+        }]).select();
+
+        if (!error && data && data[0]) {
+          const created: Supplier = {
+            id: data[0].id,
+            ...formData,
+            isActive: true,
+            rating: 5,
+            totalOrders: 0,
+            totalSpent: 0,
+            lastOrderDate: null,
+            createdAt: data[0].created_at || new Date().toISOString(),
+            updatedAt: data[0].updated_at || new Date().toISOString(),
+          };
+          setSuppliers([created, ...suppliers]);
+          setSelectedSupplier(created);
+        } else {
+          // Fallback if local only
+          const fallback: Supplier = {
+            id: Date.now().toString(),
+            ...formData,
+            isActive: true,
+            rating: 5,
+            totalOrders: 0,
+            totalSpent: 0,
+            lastOrderDate: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setSuppliers([fallback, ...suppliers]);
+          setSelectedSupplier(fallback);
+        }
+      } catch (e) {
+        console.log('Error creating supplier in DB:', e);
+      }
     }
 
     setShowForm(false);
-    setIsEditing(false);
-    setSelectedSupplier(null);
-    setFormData({
-      name: '',
-      contactPerson: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: '',
-      taxId: '',
-      paymentTerms: '',
-      notes: '',
-    });
-    setErrors({});
+    resetForm();
   };
 
   const handleEdit = (supplier: Supplier) => {
@@ -202,31 +235,22 @@ export default function SuppliersScreen() {
       notes: supplier.notes,
     });
     setIsEditing(true);
-    if (isTablet) {
-      setShowForm(true);
-    } else {
-      setShowForm(true);
-    }
+    setShowForm(true);
   };
 
-  const handleViewDetails = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
-    if (isTablet) {
-      // On tablet, details show in right panel
-    } else {
-      setShowDetails(true);
+  const handleDelete = async (supplierId: string) => {
+    // Delete from Supabase DB explicitly
+    try {
+      const { error } = await supabase.from('suppliers').delete().eq('id', supplierId);
+      if (error) console.log('Error deleting supplier from DB:', error);
+    } catch (e) {
+      console.log('Error deleting supplier from DB:', e);
     }
-  };
 
-  const handleDelete = (supplierId: string) => {
     setSuppliers(suppliers.filter(s => s.id !== supplierId));
     if (selectedSupplier?.id === supplierId) {
       setSelectedSupplier(null);
     }
-  };
-
-  const handleSupplierSelect = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
   };
 
   const resetForm = () => {
@@ -246,73 +270,85 @@ export default function SuppliersScreen() {
     });
     setErrors({});
     setIsEditing(false);
-    setSelectedSupplier(null);
   };
 
+  // Left Panel Content: SearchBar + Supplier List
   const leftPanel = (
     <View style={styles.leftPanelContent}>
-      <View style={styles.searchContainer}>
-        <DripInput
-          label="Search suppliers..."
-          value={filter.search}
-          onChangeText={(text) => setFilter({ ...filter, search: text })}
-          leftIcon={<Search size={20} color={theme.iconSecondary} />}
-        />
-      </View>
+      <DripSearchBar
+        placeholder="Search suppliers by name, contact, email..."
+        value={filter.search}
+        onChangeText={(text) => setFilter({ ...filter, search: text })}
+        onClear={() => setFilter({ ...filter, search: '' })}
+      />
 
-      <ScrollView style={styles.suppliersList} showsVerticalScrollIndicator={false}>
-        {filteredSuppliers.map((supplier) => (
-          <TouchableOpacity
-            key={supplier.id}
-            style={[
-              styles.supplierCard,
-              { 
-                backgroundColor: selectedSupplier?.id === supplier.id ? theme.primary : theme.card,
-                borderColor: selectedSupplier?.id === supplier.id ? theme.primary : theme.border
-              }
-            ]}
-            onPress={() => handleSupplierSelect(supplier)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.supplierCardHeader}>
-              <View style={styles.supplierInfo}>
-                <Text style={[
-                  styles.supplierName,
-                  { color: selectedSupplier?.id === supplier.id ? theme.background : theme.text }
-                ]}>
-                  {supplier.name}
-                </Text>
-                <Text style={[styles.supplierContact, { color: theme.textSecondary }]}>
-                  {supplier.contactPerson}
-                </Text>
-              </View>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: supplier.isActive ? theme.success : theme.textDisabled }
-              ]}>
-                <Text style={[styles.statusText, { color: theme.background }]}>
-                  {supplier.isActive ? 'Active' : 'Inactive'}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.supplierStats}>
-              <View style={styles.statItem}>
-                <Star size={16} color={theme.warning} fill={theme.warning} />
-                <Text style={[styles.statText, { color: theme.textSecondary }]}>
-                  {supplier.rating}/5
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Package size={16} color={theme.textSecondary} />
-                <Text style={[styles.statText, { color: theme.textSecondary }]}>
-                  {supplier.totalOrders} orders
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 30 }} />
+      ) : filteredSuppliers.length === 0 ? (
+        <View style={styles.emptyListContainer}>
+          <Building2 size={48} color={theme.textDisabled} />
+          <Text style={[styles.emptyListText, { color: theme.textSecondary }]}>
+            {filter.search ? 'No suppliers found matching search.' : 'No suppliers registered in database.'}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.suppliersList} showsVerticalScrollIndicator={false}>
+          {filteredSuppliers.map((supplier) => {
+            const isSelected = selectedSupplier?.id === supplier.id;
+            return (
+              <TouchableOpacity
+                key={supplier.id}
+                style={[
+                  styles.supplierCard,
+                  { 
+                    backgroundColor: isSelected ? theme.primary : theme.card,
+                    borderColor: isSelected ? theme.primary : theme.border
+                  }
+                ]}
+                onPress={() => setSelectedSupplier(supplier)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.supplierCardHeader}>
+                  <View style={styles.supplierInfo}>
+                    <Text style={[
+                      styles.supplierName,
+                      { color: isSelected ? theme.background : theme.text }
+                    ]}>
+                      {supplier.name}
+                    </Text>
+                    <Text style={[styles.supplierContact, { color: isSelected ? theme.background + 'D0' : theme.textSecondary }]}>
+                      {supplier.contactPerson}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: supplier.isActive ? theme.success : theme.textDisabled }
+                  ]}>
+                    <Text style={[styles.statusText, { color: theme.background }]}>
+                      {supplier.isActive ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.supplierStats}>
+                  <View style={styles.statItem}>
+                    <Star size={16} color={isSelected ? theme.background : theme.warning} fill={isSelected ? theme.background : theme.warning} />
+                    <Text style={[styles.statText, { color: isSelected ? theme.background : theme.textSecondary }]}>
+                      {supplier.rating}/5
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Package size={16} color={isSelected ? theme.background : theme.textSecondary} />
+                    <Text style={[styles.statText, { color: isSelected ? theme.background : theme.textSecondary }]}>
+                      {supplier.totalOrders} orders
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {canCreate && (
         <DripButton
@@ -328,6 +364,7 @@ export default function SuppliersScreen() {
     </View>
   );
 
+  // Right Panel Content: Details of Selected Supplier
   const rightPanel = selectedSupplier ? (
     <View style={styles.supplierDetails}>
       <View style={styles.detailsHeader}>
@@ -367,72 +404,50 @@ export default function SuppliersScreen() {
       <ScrollView style={styles.detailsContent} showsVerticalScrollIndicator={false}>
         <View style={styles.detailSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Contact Information</Text>
-          
           <View style={styles.detailRow}>
             <Mail size={18} color={theme.textSecondary} />
             <Text style={[styles.detailText, { color: theme.textSecondary }]}>
               {selectedSupplier.email}
             </Text>
           </View>
-          
           <View style={styles.detailRow}>
             <Phone size={18} color={theme.textSecondary} />
             <Text style={[styles.detailText, { color: theme.textSecondary }]}>
               {selectedSupplier.phone}
             </Text>
           </View>
-          
           <View style={styles.detailRow}>
             <MapPin size={18} color={theme.textSecondary} />
             <Text style={[styles.detailText, { color: theme.textSecondary }]}>
               {selectedSupplier.address}, {selectedSupplier.city}, {selectedSupplier.state} {selectedSupplier.postalCode}
             </Text>
           </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-              {selectedSupplier.country}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.detailSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Business Details</Text>
-          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: theme.textTertiary }]}>Tax ID:</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>
-              {selectedSupplier.taxId}
-            </Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{selectedSupplier.taxId}</Text>
           </View>
-          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: theme.textTertiary }]}>Payment Terms:</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>
-              {selectedSupplier.paymentTerms}
-            </Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{selectedSupplier.paymentTerms}</Text>
           </View>
         </View>
 
         <View style={styles.detailSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Performance</Text>
-          
           <View style={styles.detailRow}>
             <Star size={18} color={theme.warning} fill={theme.warning} />
             <Text style={[styles.detailLabel, { color: theme.textTertiary }]}>Rating:</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>
-              {selectedSupplier.rating}/5
-            </Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{selectedSupplier.rating}/5</Text>
           </View>
-          
           <View style={styles.detailRow}>
             <Package size={18} color={theme.textSecondary} />
             <Text style={[styles.detailLabel, { color: theme.textTertiary }]}>Total Orders:</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>
-              {selectedSupplier.totalOrders}
-            </Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{selectedSupplier.totalOrders}</Text>
           </View>
-          
           <View style={styles.detailRow}>
             <DollarSign size={18} color={theme.success} />
             <Text style={[styles.detailLabel, { color: theme.textTertiary }]}>Total Spent:</Text>
@@ -440,7 +455,6 @@ export default function SuppliersScreen() {
               ${selectedSupplier.totalSpent.toLocaleString()}
             </Text>
           </View>
-          
           {selectedSupplier.lastOrderDate && (
             <View style={styles.detailRow}>
               <Calendar size={18} color={theme.textSecondary} />
@@ -452,14 +466,14 @@ export default function SuppliersScreen() {
           )}
         </View>
 
-        {selectedSupplier.notes && (
+        {selectedSupplier.notes ? (
           <View style={styles.detailSection}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Notes</Text>
             <Text style={[styles.notesText, { color: theme.textSecondary }]}>
               {selectedSupplier.notes}
             </Text>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </View>
   ) : (
@@ -471,27 +485,58 @@ export default function SuppliersScreen() {
     </View>
   );
 
-  const formPanel = (
-    <View style={styles.formContainer}>
-      <ScrollView style={styles.formContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.formTitle, { color: theme.text }]}>
-          {isEditing ? 'Edit Supplier' : 'Add New Supplier'}
-        </Text>
+  return (
+    <>
+      <Header title="Suppliers" />
+      <DripContainer
+        leftPanel={leftPanel}
+        rightPanel={rightPanel}
+        showSecondaryMobile={!!selectedSupplier}
+        onMobileBack={() => setSelectedSupplier(null)}
+        backButtonTitle="Back to Suppliers"
+        childrenPadding={16}
+      />
 
+      {/* Responsive Form Sheet */}
+      <DripSheet
+        visible={showForm}
+        onClose={() => {
+          setShowForm(false);
+          resetForm();
+        }}
+        title={isEditing ? 'Edit Supplier' : 'Add New Supplier'}
+        headerIcon={<Building2 size={20} color={theme.primary} />}
+        footer={
+          <View style={styles.formFooterActions}>
+            <DripButton
+              title="Cancel"
+              onPress={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+              variant="secondary"
+              style={styles.formButton}
+            />
+            <DripButton
+              title={isEditing ? 'Update' : 'Create'}
+              onPress={handleSave}
+              style={styles.formButton}
+            />
+          </View>
+        }
+      >
         <DripInput
           label="Company Name"
           value={formData.name}
           onChangeText={(text) => setFormData({ ...formData, name: text })}
           error={errors.name}
         />
-
         <DripInput
           label="Contact Person"
           value={formData.contactPerson}
           onChangeText={(text) => setFormData({ ...formData, contactPerson: text })}
           error={errors.contactPerson}
         />
-
         <DripInput
           label="Email"
           value={formData.email}
@@ -499,7 +544,6 @@ export default function SuppliersScreen() {
           error={errors.email}
           keyboardType="email-address"
         />
-
         <DripInput
           label="Phone"
           value={formData.phone}
@@ -507,51 +551,43 @@ export default function SuppliersScreen() {
           error={errors.phone}
           keyboardType="phone-pad"
         />
-
         <DripInput
           label="Address"
           value={formData.address}
           onChangeText={(text) => setFormData({ ...formData, address: text })}
           error={errors.address}
         />
-
         <DripInput
           label="City"
           value={formData.city}
           onChangeText={(text) => setFormData({ ...formData, city: text })}
         />
-
         <DripInput
           label="State"
           value={formData.state}
           onChangeText={(text) => setFormData({ ...formData, state: text })}
         />
-
         <DripInput
           label="Postal Code"
           value={formData.postalCode}
           onChangeText={(text) => setFormData({ ...formData, postalCode: text })}
         />
-
         <DripInput
           label="Country"
           value={formData.country}
           onChangeText={(text) => setFormData({ ...formData, country: text })}
         />
-
         <DripInput
           label="Tax ID"
           value={formData.taxId}
           onChangeText={(text) => setFormData({ ...formData, taxId: text })}
         />
-
         <DripInput
           label="Payment Terms"
           value={formData.paymentTerms}
           onChangeText={(text) => setFormData({ ...formData, paymentTerms: text })}
           placeholder="e.g., Net 30, Net 15"
         />
-
         <DripInput
           label="Notes"
           value={formData.notes}
@@ -559,40 +595,7 @@ export default function SuppliersScreen() {
           multiline
           numberOfLines={4}
         />
-
-        <View style={styles.formActions}>
-          <DripButton
-            title="Cancel"
-            onPress={() => {
-              setShowForm(false);
-              resetForm();
-            }}
-            variant="secondary"
-            style={styles.formButton}
-          />
-          <DripButton
-            title={isEditing ? 'Update' : 'Create'}
-            onPress={handleSave}
-            style={styles.formButton}
-          />
-        </View>
-      </ScrollView>
-    </View>
-  );
-
-  return (
-    <>
-      <Header title="Suppliers" />
-      <DripContainer
-        leftPanel={leftPanel}
-        rightPanel={showForm ? formPanel : rightPanel}
-        showSecondaryMobile={showForm}
-        onMobileBack={() => {
-          setShowForm(false);
-          resetForm();
-        }}
-        backButtonTitle="Back to Suppliers"
-      />
+      </DripSheet>
     </>
   );
 }
@@ -601,8 +604,16 @@ const styles = StyleSheet.create({
   leftPanelContent: {
     flex: 1,
   },
-  searchContainer: {
-    marginBottom: 16,
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyListText: {
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: 'center',
   },
   suppliersList: {
     flex: 1,
@@ -734,22 +745,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
-  formContainer: {
-    flex: 1,
-  },
-  formContent: {
-    flex: 1,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 24,
-  },
-  formActions: {
+  formFooterActions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 24,
-    marginBottom: 16,
+    width: '100%',
   },
   formButton: {
     flex: 1,

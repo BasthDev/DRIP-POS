@@ -1,8 +1,7 @@
 import { useTheme } from '@/constants/colorTheme';
 import { ChevronDown, ChevronUp, ListEnd } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -40,23 +39,13 @@ export const DripDropdown: React.FC<DripDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState('');
 
-  const animation = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  const active = isOpen || !!value || !!selectedLabel;
-
-  useEffect(() => {
-    Animated.timing(animation, {
-      toValue: active ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [active]);
-
   useEffect(() => {
     if (value) {
       const selectedOption = options.find((opt) => opt.value === value);
       if (selectedOption) {
         setSelectedLabel(selectedOption.label);
+      } else {
+        setSelectedLabel(value);
       }
     } else {
       setSelectedLabel('');
@@ -75,47 +64,25 @@ export const DripDropdown: React.FC<DripDropdownProps> = ({
     }
   };
 
-  // Base left offset matching DripInput layout (48px for icon spacing)
-  const baseLeft = 48;
-
-  const labelTranslateY = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -38],
-  });
-
-  const labelScale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.9],
-  });
-
   const labelColor = error
     ? theme.error
     : isOpen
       ? theme.primary
       : theme.textTertiary;
 
-  // Default icon on left is ListEnd if no custom leftIcon is supplied
   const iconToRender = leftIcon || <ListEnd size={20} color={theme.iconSecondary || theme.textTertiary} />;
 
   return (
     <View style={styles.container}>
-      {/* Label / Placeholder */}
-      <Animated.Text
-        pointerEvents="none"
+      {/* Label Statis di Atas Dropdown Container (sama persis dengan DripInput) */}
+      <Text
         style={[
           styles.label,
-          {
-            left: baseLeft,
-            color: labelColor,
-            transform: [
-              { translateY: labelTranslateY },
-              { scale: labelScale },
-            ],
-          },
+          { color: labelColor },
         ]}
       >
         {label}
-      </Animated.Text>
+      </Text>
 
       {/* Dropdown Container */}
       <TouchableWithoutFeedback onPress={toggleDropdown}>
@@ -134,7 +101,7 @@ export const DripDropdown: React.FC<DripDropdownProps> = ({
             disabled && styles.disabledContainer,
           ]}
         >
-          {/* Left Icon (ListEnd by default) */}
+          {/* Left Icon */}
           <View style={styles.iconContainerLeft}>{iconToRender}</View>
 
           {/* Selected Value Text */}
@@ -149,7 +116,7 @@ export const DripDropdown: React.FC<DripDropdownProps> = ({
             ]}
             numberOfLines={1}
           >
-            {selectedLabel}
+            {selectedLabel || `Select ${label}...`}
           </Text>
 
           {/* Right Chevron Arrow Icon */}
@@ -213,18 +180,14 @@ export const DripDropdown: React.FC<DripDropdownProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
-    marginBottom: 20,
+    marginTop: 10,
   },
 
   label: {
-    position: 'absolute',
-    top: 18,
-    fontSize: 15,
-    fontWeight: '500',
-    zIndex: 10,
-    // @ts-ignore
-    transformOrigin: 'left center',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginLeft: 2,
   },
 
   dropdownContainer: {

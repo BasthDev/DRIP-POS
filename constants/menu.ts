@@ -1,16 +1,16 @@
 import {
-    BarChart3,
-    Boxes,
-    Building2,
-    Layers,
-    Leaf,
-    Package,
-    Receipt,
-    Settings,
-    ShoppingBag,
-    Store,
-    Users,
-    Utensils
+  BarChart3,
+  Boxes,
+  Building2,
+  Layers,
+  Leaf,
+  Package,
+  Receipt,
+  Settings,
+  ShoppingBag,
+  Store,
+  Users,
+  Utensils
 } from 'lucide-react-native';
 import { UserRole } from './auth/types';
 
@@ -23,11 +23,25 @@ export interface MenuItem {
 
 export const DRAWER_MENU_ITEMS: MenuItem[] = [
   {
-    title: 'POS Terminal',
+    title: 'Dashboard & POS',
     path: '/',
     icon: ShoppingBag,
     roles: ['Owner', 'Manager', 'Admin', 'Staff', 'Cashier'],
   },
+  {
+    title: 'Suppliers',
+    path: '/suppliers',
+    icon: Building2,
+    roles: ['Owner', 'Manager', 'Admin'],
+  },
+  {
+    title: 'Warehouse & Stock',
+    path: '/inventory',
+    icon: Boxes,
+    roles: ['Owner', 'Manager', 'Admin'],
+  },
+  /* 
+  // Commented out future menu items (preserved for reference):
   {
     title: 'Orders & Sales',
     path: '/orders',
@@ -77,27 +91,10 @@ export const DRAWER_MENU_ITEMS: MenuItem[] = [
     roles: ['Owner', 'Manager', 'Admin'],
   },
   {
-    title: 'Suppliers',
-    path: '/suppliers',
-    icon: Building2,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
-  {
-    title: 'Warehouse & Stock',
-    path: '/inventory',
-    icon: Boxes,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
-  {
     title: 'Settings',
     path: '/settings',
     icon: Settings,
     roles: ['Owner', 'Manager', 'Admin', 'Staff', 'Cashier'],
   },
-  {
-    title: 'UI Component Showcase',
-    path: '/example',
-    icon: Package,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
+  */
 ];

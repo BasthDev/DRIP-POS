@@ -3,12 +3,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, ScanLine, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface DripScannerModalProps {
@@ -31,8 +31,7 @@ export const DripScannerModal: React.FC<DripScannerModalProps> = ({
   const screenHeight = Dimensions.get('window').height;
   const isSquare = scanMode === 'qr';
 
-  // Frame dimensions matching your UI styles
-  const frameWidth = isSquare ? 250 : screenWidth * 0.85; // '85%' estimate or explicit dimensions
+  // Frame dimensions matching UI styles
   const frameHeight = isSquare ? 250 : 160;
 
   // Calculate exact screen boundaries of the viewfinder target box
@@ -43,8 +42,14 @@ export const DripScannerModal: React.FC<DripScannerModalProps> = ({
 
   if (!permission?.granted) {
     return (
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <View style={[styles.permissionContainer, { backgroundColor: theme.background }]}>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={onClose}
+      >
+        <View style={[styles.permissionContainer, { backgroundColor: theme.background, zIndex: 999999, elevation: 999999 }]}>
           <Text style={[styles.permissionText, { color: theme.text }]}>
             Camera permission is required to scan codes.
           </Text>
@@ -91,83 +96,97 @@ export const DripScannerModal: React.FC<DripScannerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <CameraView
-        style={styles.camera}
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: scanMode === 'qr' ? ['qr'] : ['code128', 'code39', 'ean13', 'upc_a', 'upc_e'],
-        }}
-      >
-        {/* Top Header Overlay */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
-            onPress={onClose}
-          >
-            <X size={22} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {scanMode === 'barcode' ? 'Scan Barcode / SKU' : 'Scan QR Code'}
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* Viewfinder Target Area */}
-        <View style={styles.viewfinderContainer}>
-          <View
-            style={[
-              styles.targetFrame,
-              scanMode === 'qr' ? styles.squareFrame : styles.rectFrame,
-              { borderColor: theme.primary },
-            ]}
-          >
-            <View style={[styles.cornerTL, { borderColor: theme.primary }]} />
-            <View style={[styles.cornerTR, { borderColor: theme.primary }]} />
-            <View style={[styles.cornerBL, { borderColor: theme.primary }]} />
-            <View style={[styles.cornerBR, { borderColor: theme.primary }]} />
-          </View>
-          <Text style={styles.instructionText}>
-            Align {scanMode === 'barcode' ? 'barcode inside the rectangle' : 'QR code inside the box'}
-          </Text>
-        </View>
-
-        {/* Mode Switcher Footer */}
-        <View style={styles.footer}>
-          <View style={[styles.modeSwitcher, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <CameraView
+          style={styles.camera}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: scanMode === 'qr' ? ['qr'] : ['code128', 'code39', 'ean13', 'upc_a', 'upc_e'],
+          }}
+        >
+          {/* Top Header Overlay */}
+          <View style={styles.header}>
             <TouchableOpacity
-              style={[
-                styles.modeButton,
-                scanMode === 'barcode' && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => setScanMode('barcode')}
+              style={[styles.closeButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
+              onPress={onClose}
             >
-              <ScanLine size={18} color={scanMode === 'barcode' ? theme.background : '#fff'} />
-              <Text style={[styles.modeText, { color: scanMode === 'barcode' ? theme.background : '#fff' }]}>
-                Barcode
-              </Text>
+              <X size={22} color="#fff" />
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.modeButton,
-                scanMode === 'qr' && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => setScanMode('qr')}
-            >
-              <QrCode size={18} color={scanMode === 'qr' ? theme.background : '#fff'} />
-              <Text style={[styles.modeText, { color: scanMode === 'qr' ? theme.background : '#fff' }]}>
-                QR Code
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {scanMode === 'barcode' ? 'Scan Barcode / SKU' : 'Scan QR Code'}
+            </Text>
+            <View style={{ width: 40 }} />
           </View>
-        </View>
-      </CameraView>
+
+          {/* Viewfinder Target Area */}
+          <View style={styles.viewfinderContainer}>
+            <View
+              style={[
+                styles.targetFrame,
+                scanMode === 'qr' ? styles.squareFrame : styles.rectFrame,
+                { borderColor: theme.primary },
+              ]}
+            >
+              <View style={[styles.cornerTL, { borderColor: theme.primary }]} />
+              <View style={[styles.cornerTR, { borderColor: theme.primary }]} />
+              <View style={[styles.cornerBL, { borderColor: theme.primary }]} />
+              <View style={[styles.cornerBR, { borderColor: theme.primary }]} />
+            </View>
+            <Text style={styles.instructionText}>
+              Align {scanMode === 'barcode' ? 'barcode inside the rectangle' : 'QR code inside the box'}
+            </Text>
+          </View>
+
+          {/* Mode Switcher Footer */}
+          <View style={styles.footer}>
+            <View style={[styles.modeSwitcher, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  scanMode === 'barcode' && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setScanMode('barcode')}
+              >
+                <ScanLine size={18} color={scanMode === 'barcode' ? theme.background : '#fff'} />
+                <Text style={[styles.modeText, { color: scanMode === 'barcode' ? theme.background : '#fff' }]}>
+                  Barcode
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  scanMode === 'qr' && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setScanMode('qr')}
+              >
+                <QrCode size={18} color={scanMode === 'qr' ? theme.background : '#fff'} />
+                <Text style={[styles.modeText, { color: scanMode === 'qr' ? theme.background : '#fff' }]}>
+                  QR Code
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </CameraView>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+    zIndex: 999999,
+    elevation: 999999,
+  },
   camera: {
     flex: 1,
     justifyContent: 'space-between',

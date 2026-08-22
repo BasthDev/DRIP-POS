@@ -34,8 +34,6 @@ export const DripInput: React.FC<DripInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const textInputRef = useRef<TextInput>(null);
 
-  const active = isFocused || !!value;
-
   const handleFocus = () => {
     setIsFocused(true);
   };
@@ -48,9 +46,6 @@ export const DripInput: React.FC<DripInputProps> = ({
     textInputRef.current?.focus();
   };
 
-  // Base left offset for floating label when an icon is present
-  const baseLeft = 48;
-
   const labelColor = error
     ? theme.error
     : isFocused
@@ -62,16 +57,13 @@ export const DripInput: React.FC<DripInputProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Label / Placeholder (Tanpa Animasi, langsung lompat ke atas jika active) */}
+      {/* Label Statis di Atas Input */}
       <Text
-        pointerEvents="none"
         style={[
           styles.label,
           {
-            left: baseLeft,
             color: labelColor,
           },
-          active && styles.labelActive,
         ]}
       >
         {label}
@@ -147,19 +139,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
+  // Label statis di atas kotak input
   label: {
-    position: 'absolute',
-    top: 18,
-    fontSize: 15,
-    fontWeight: '500',
-    zIndex: 10,
-  },
-
-  // Style tambahan saat label berada di posisi atas (aktif / ada isi)
-  labelActive: {
-    top: -20,
-    fontSize: 13,
-    transform: [{ scale: 0.9 }],
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginLeft: 2,
   },
 
   inputContainer: {
