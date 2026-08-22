@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DripBackButtonProps {
   title?: string;
@@ -18,7 +17,6 @@ export const DripBackButton: React.FC<DripBackButtonProps> = ({
 }) => {
   const router = useRouter();
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const handlePress = () => {
     if (onPress) {
@@ -35,7 +33,6 @@ export const DripBackButton: React.FC<DripBackButtonProps> = ({
         {
           backgroundColor: theme.card,
           borderBottomColor: theme.border,
-          paddingTop: insets.top > 0 ? insets.top : 10,
         },
         style,
       ]}
@@ -59,7 +56,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderBottomWidth: 1,
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingVertical: 4,
   },
   innerRow: {
     height: 44,

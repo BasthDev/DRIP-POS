@@ -2,7 +2,6 @@ import { DripBackButton } from '@/components/BackButton';
 import { useTheme } from '@/constants/colorTheme';
 import React, { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DripContainerProps {
   // Content for the left panel on tablet, or main screen on mobile
@@ -41,7 +40,6 @@ export const DripContainer: React.FC<DripContainerProps> = ({
 }) => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   
   // Tablet breakpoint threshold (e.g., 768px)
   const isTablet = width >= 768;
@@ -49,7 +47,7 @@ export const DripContainer: React.FC<DripContainerProps> = ({
   if (isTablet) {
     // --- TABLET LAYOUT (Left Panel flex 1, Right Panel flex 2) ---
     return (
-      <SafeAreaView style={[styles.tabletContainer, { backgroundColor: theme.background }, style]} edges={['top', 'left', 'right']}>
+      <View style={[styles.tabletContainer, { backgroundColor: theme.background }, style]}>
         {/* Left Panel (Flex 1) */}
         <View style={[styles.leftPanel, { borderColor: theme.border }]}>
           <View style={{ padding: childrenPadding, flex: 1 }}>
@@ -66,13 +64,13 @@ export const DripContainer: React.FC<DripContainerProps> = ({
             {rightPanel}
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // --- MOBILE LAYOUT (Stacked screens controlled by state) ---
   return (
-    <SafeAreaView style={[styles.mobileContainer, { backgroundColor: theme.background }, style]} edges={['top', 'left', 'right']}>
+    <View style={[styles.mobileContainer, { backgroundColor: theme.background }, style]}>
       {!showSecondaryMobile ? (
         // Main Screen
         <View style={styles.screenWrapper}>
@@ -89,7 +87,7 @@ export const DripContainer: React.FC<DripContainerProps> = ({
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

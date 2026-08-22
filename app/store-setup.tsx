@@ -6,12 +6,14 @@ import { useTheme } from '@/constants/colorTheme';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { MapPin, Phone, Store } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function StoreSetupScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [storeName, setStoreName] = useState('Main Branch');
@@ -25,7 +27,7 @@ export default function StoreSetupScreen() {
 
   const handleCreateStore = async () => {
     if (!storeName.trim()) {
-      setToastMessage('Please provide a store branch name.');
+      setToastMessage(t('storeSetup.requireBranchName'));
       setToastType('error');
       setToastVisible(true);
       return;
@@ -113,7 +115,7 @@ export default function StoreSetupScreen() {
         }]);
       }
 
-      setToastMessage('Store created successfully! Redirecting to POS...');
+      setToastMessage(t('storeSetup.successMessage'));
       setToastType('success');
       setToastVisible(true);
 
@@ -121,7 +123,7 @@ export default function StoreSetupScreen() {
         router.replace('/' as any);
       }, 400);
     } catch (err: any) {
-      setToastMessage(err.message || 'An error occurred during store creation.');
+      setToastMessage(err.message || t('common.error'));
       setToastType('error');
       setToastVisible(true);
     } finally {
@@ -144,23 +146,23 @@ export default function StoreSetupScreen() {
             <View style={[styles.iconWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Store size={32} color={theme.primary} />
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>Setup Your First Store</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('storeSetup.title')}</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Configure your primary store branch to launch the POS terminal
+              {t('storeSetup.subtitle')}
             </Text>
           </View>
 
           <View style={styles.form}>
             <DripInput
-              label="Store Branch Name"
+              label={t('storeSetup.branchName')}
               value={storeName}
               onChangeText={setStoreName}
               leftIcon={<Store size={18} color={theme.textSecondary} />}
-              placeholder="e.g. Drip Coffee Main Branch"
+              placeholder={t('storeSetup.branchNamePlaceholder')}
             />
 
             <DripInput
-              label="Store Phone (Optional)"
+              label={t('storeSetup.storePhone')}
               value={phone}
               onChangeText={setPhone}
               leftIcon={<Phone size={18} color={theme.textSecondary} />}
@@ -168,14 +170,14 @@ export default function StoreSetupScreen() {
             />
 
             <DripInput
-              label="Physical Address (Optional)"
+              label={t('storeSetup.address')}
               value={address}
               onChangeText={setAddress}
               leftIcon={<MapPin size={18} color={theme.textSecondary} />}
             />
 
             <DripButton
-              title="Launch POS Terminal"
+              title={t('storeSetup.submitButton')}
               onPress={handleCreateStore}
               loading={loading}
               style={styles.submitBtn}
@@ -225,6 +227,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,

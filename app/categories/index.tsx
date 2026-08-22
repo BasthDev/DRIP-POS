@@ -1,34 +1,51 @@
 import { DripButton } from '@/components/Button';
 import { DripContainer } from '@/components/Container';
+import { DripDropdown, DropdownOption } from '@/components/Dropdown';
 import { Header } from '@/components/Header';
 import { DripInput } from '@/components/Input';
 import { DripSearchBar } from '@/components/SearchBar';
 import { DripSheet } from '@/components/Sheet';
 import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
-import { Supplier } from '@/constants/types';
+import { Category, CategoryParent } from '@/constants/types';
 import { supabase } from '@/lib/supabase';
-import { Building2, Edit, Phone, Plus, Trash2 } from 'lucide-react-native';
+import { Check, Edit, Layers, Plus, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function SuppliersScreen() {
+const PRESET_COLORS = [
+  '#065F46',
+  '#059669',
+  '#10B981',
+  '#3B82F6',
+  '#6366F1',
+  '#8B5CF6',
+  '#EC4899',
+  '#F43F5E',
+  '#EF4444',
+  '#F97316',
+  '#F59E0B',
+  '#64748B',
+];
+
+export default function CategoriesScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { hasPermission } = useAuth();
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [parentOptions, setParentOptions] = useState<DropdownOption[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form states
+  // Form State
   const [nameInput, setNameInput] = useState('');
-  const [contactInput, setContactInput] = useState('');
-  const [notesInput, setNotesInput] = useState('');
+  const [parentIdInput, setParentIdInput] = useState<string>('');
+  const [colorInput, setColorInput] = useState(PRESET_COLORS[0]);
   const [errorName, setErrorName] = useState('');
 
   const canCreate = hasPermission('inventory.create');
@@ -36,98 +53,116 @@ export default function SuppliersScreen() {
   const canDelete = hasPermission('inventory.delete');
 
   useEffect(() => {
-    fetchSuppliers();
+    fetchData();
   }, []);
 
-  const fetchSuppliers = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('suppliers')
+      // Fetch parents
+      const { data: parentData } = await supabase
+        .from('category_parents')
         .select('*')
-        .order('name', { ascending: true });
+        .order('name');
+
+      if (parentData) {
+        setParentOptions([
+          { label: 'None (select parent)', value: '' },
+          ...parentData.map((p: CategoryParent) => ({ label: p.name, value: p.id })),
+        ]);
+      }
+
+      // Fetch categories with joined parent
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*, category_parents(name)')
+        .order('name');
 
       if (error) {
-        console.log('Error fetching suppliers:', error);
-        setSuppliers([]);
+        console.log('Error fetching categories:', error);
+        setCategories([]);
       } else if (data) {
-        const formatted: Supplier[] = data.map((item: any) => ({
+        const formatted: Category[] = data.map((item: any) => ({
           id: item.id,
+          parent_id: item.parent_id || null,
           name: item.name,
-          contact: item.contact || item.phone || item.contact_person || '',
-          notes: item.notes || '',
+          color: item.color || '#065F46',
+          parent_name: item.category_parents?.name,
           created_at: item.created_at,
           updated_at: item.updated_at,
         }));
-        setSuppliers(formatted);
+        setCategories(formatted);
       }
     } catch (e) {
-      console.log('Error fetching suppliers:', e);
-      setSuppliers([]);
+      console.log('Error fetching categories:', e);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSuppliers = suppliers.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.contact && s.contact.toLowerCase().includes(search.toLowerCase()))
+  const filteredCategories = categories.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.parent_name && c.parent_name.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleSave = async () => {
-    const trimmedName = nameInput.trim();
-    if (!trimmedName) {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
       setErrorName(t('validation.required'));
       return;
     }
 
     const payload = {
-      name: trimmedName,
-      contact: contactInput.trim() || null,
-      phone: contactInput.trim() || null,
-      notes: notesInput.trim() || null,
+      name: trimmed,
+      parent_id: parentIdInput || null,
+      color: colorInput,
       updated_at: new Date().toISOString(),
     };
 
-    if (isEditing && selectedSupplier) {
-      setSuppliers(
-        suppliers.map((s) =>
-          s.id === selectedSupplier.id
-            ? { ...s, ...payload }
-            : s
+    const parentName = parentOptions.find((p) => p.value === parentIdInput)?.label;
+
+    if (isEditing && selectedCategory) {
+      setCategories(
+        categories.map((c) =>
+          c.id === selectedCategory.id
+            ? { ...c, ...payload, parent_name: parentName }
+            : c
         )
       );
-      setSelectedSupplier({ ...selectedSupplier, ...payload });
+      setSelectedCategory({ ...selectedCategory, ...payload, parent_name: parentName });
 
       try {
-        await supabase.from('suppliers').update(payload).eq('id', selectedSupplier.id);
+        await supabase.from('categories').update(payload).eq('id', selectedCategory.id);
       } catch (e) {
-        console.log('Error updating supplier in DB:', e);
+        console.log('Error updating category:', e);
       }
     } else {
       try {
         const { data, error } = await supabase
-          .from('suppliers')
+          .from('categories')
           .insert([{ ...payload }])
           .select();
 
         if (!error && data && data[0]) {
-          const newSupp: Supplier = {
+          const newCat: Category = {
             id: data[0].id,
             ...payload,
+            parent_name: parentName,
           };
-          setSuppliers([...suppliers, newSupp]);
-          setSelectedSupplier(newSupp);
+          setCategories([newCat, ...categories]);
+          setSelectedCategory(newCat);
         } else {
-          const fallback: Supplier = {
+          const fallback: Category = {
             id: Date.now().toString(),
             ...payload,
+            parent_name: parentName,
           };
-          setSuppliers([...suppliers, fallback]);
-          setSelectedSupplier(fallback);
+          setCategories([fallback, ...categories]);
+          setSelectedCategory(fallback);
         }
       } catch (e) {
-        console.log('Error creating supplier in DB:', e);
+        console.log('Error inserting category:', e);
       }
     }
 
@@ -140,11 +175,11 @@ export default function SuppliersScreen() {
     setShowForm(true);
   };
 
-  const openEdit = (supp: Supplier) => {
-    setSelectedSupplier(supp);
-    setNameInput(supp.name);
-    setContactInput(supp.contact || '');
-    setNotesInput(supp.notes || '');
+  const openEdit = (cat: Category) => {
+    setSelectedCategory(cat);
+    setNameInput(cat.name);
+    setParentIdInput(cat.parent_id || '');
+    setColorInput(cat.color || PRESET_COLORS[0]);
     setErrorName('');
     setIsEditing(true);
     setShowForm(true);
@@ -152,21 +187,21 @@ export default function SuppliersScreen() {
 
   const handleDelete = async (id: string) => {
     try {
-      await supabase.from('suppliers').delete().eq('id', id);
+      await supabase.from('categories').delete().eq('id', id);
     } catch (e) {
-      console.log('Error deleting supplier from DB:', e);
+      console.log('Error deleting category:', e);
     }
 
-    setSuppliers(suppliers.filter((s) => s.id !== id));
-    if (selectedSupplier?.id === id) {
-      setSelectedSupplier(null);
+    setCategories(categories.filter((c) => c.id !== id));
+    if (selectedCategory?.id === id) {
+      setSelectedCategory(null);
     }
   };
 
   const resetForm = () => {
     setNameInput('');
-    setContactInput('');
-    setNotesInput('');
+    setParentIdInput('');
+    setColorInput(PRESET_COLORS[0]);
     setErrorName('');
     setIsEditing(false);
   };
@@ -182,20 +217,20 @@ export default function SuppliersScreen() {
 
       {loading ? (
         <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 30 }} />
-      ) : filteredSuppliers.length === 0 ? (
+      ) : filteredCategories.length === 0 ? (
         <View style={styles.emptyListContainer}>
-          <Building2 size={48} color={theme.textDisabled} />
+          <Layers size={48} color={theme.textDisabled} />
           <Text style={[styles.emptyListText, { color: theme.textSecondary }]}>
-            {t('suppliers.noSuppliers')}
+            {t('categories.noCategories')}
           </Text>
         </View>
       ) : (
         <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {filteredSuppliers.map((supp) => {
-            const isSelected = selectedSupplier?.id === supp.id;
+          {filteredCategories.map((cat) => {
+            const isSelected = selectedCategory?.id === cat.id;
             return (
               <TouchableOpacity
-                key={supp.id}
+                key={cat.id}
                 style={[
                   styles.card,
                   {
@@ -203,29 +238,32 @@ export default function SuppliersScreen() {
                     borderColor: isSelected ? theme.primary : theme.border,
                   },
                 ]}
-                onPress={() => setSelectedSupplier(supp)}
+                onPress={() => setSelectedCategory(cat)}
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeader}>
-                  <View style={styles.cardInfo}>
-                    <Text
-                      style={[
-                        styles.cardName,
-                        { color: isSelected ? theme.background : theme.text },
-                      ]}
-                    >
-                      {supp.name}
-                    </Text>
-                    {supp.contact ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                    <View style={[styles.colorDot, { backgroundColor: cat.color }]} />
+                    <View style={styles.cardInfo}>
                       <Text
                         style={[
-                          styles.cardSubtitle,
-                          { color: isSelected ? theme.background + 'CC' : theme.textSecondary },
+                          styles.cardName,
+                          { color: isSelected ? theme.background : theme.text },
                         ]}
                       >
-                        {supp.contact}
+                        {cat.name}
                       </Text>
-                    ) : null}
+                      {cat.parent_name ? (
+                        <Text
+                          style={[
+                            styles.cardSubtitle,
+                            { color: isSelected ? theme.background + 'CC' : theme.textSecondary },
+                          ]}
+                        >
+                          {cat.parent_name}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
 
                   <View style={styles.cardActions}>
@@ -235,7 +273,7 @@ export default function SuppliersScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: isSelected ? theme.background + '20' : theme.input },
                         ]}
-                        onPress={() => openEdit(supp)}
+                        onPress={() => openEdit(cat)}
                       >
                         <Edit size={16} color={isSelected ? theme.background : theme.primary} />
                       </TouchableOpacity>
@@ -246,7 +284,7 @@ export default function SuppliersScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: isSelected ? theme.background + '20' : '#FEE2E2' },
                         ]}
-                        onPress={() => handleDelete(supp.id)}
+                        onPress={() => handleDelete(cat.id)}
                       >
                         <Trash2 size={16} color={isSelected ? theme.background : theme.error} />
                       </TouchableOpacity>
@@ -261,7 +299,7 @@ export default function SuppliersScreen() {
 
       {canCreate && (
         <DripButton
-          title={t('suppliers.newSupplier')}
+          title={t('categories.newCategory')}
           onPress={openCreate}
           icon={<Plus size={20} color={theme.background} />}
           style={styles.addButton}
@@ -270,22 +308,19 @@ export default function SuppliersScreen() {
     </View>
   );
 
-  const rightPanel = selectedSupplier ? (
+  const rightPanel = selectedCategory ? (
     <View style={styles.detailsContent}>
       <View style={[styles.detailsHeader, { borderBottomColor: theme.border }]}>
         <View style={styles.detailsTitleContainer}>
-          <Building2 size={28} color={theme.primary} />
+          <View style={[styles.colorBadge, { backgroundColor: selectedCategory.color }]} />
           <View>
             <Text style={[styles.detailsTitle, { color: theme.text }]}>
-              {selectedSupplier.name}
+              {selectedCategory.name}
             </Text>
-            {selectedSupplier.contact ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <Phone size={14} color={theme.textSecondary} />
-                <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
-                  {selectedSupplier.contact}
-                </Text>
-              </View>
+            {selectedCategory.parent_name ? (
+              <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>
+                {t('categories.parent')}: {selectedCategory.parent_name}
+              </Text>
             ) : null}
           </View>
         </View>
@@ -294,7 +329,7 @@ export default function SuppliersScreen() {
           {canEdit && (
             <TouchableOpacity
               style={[styles.headerActionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={() => openEdit(selectedSupplier)}
+              onPress={() => openEdit(selectedCategory)}
             >
               <Edit size={18} color={theme.primary} />
             </TouchableOpacity>
@@ -302,42 +337,31 @@ export default function SuppliersScreen() {
           {canDelete && (
             <TouchableOpacity
               style={[styles.headerActionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={() => handleDelete(selectedSupplier.id)}
+              onPress={() => handleDelete(selectedCategory.id)}
             >
               <Trash2 size={18} color={theme.error} />
             </TouchableOpacity>
           )}
         </View>
       </View>
-
-      {selectedSupplier.notes ? (
-        <View style={{ marginTop: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 6 }}>
-            {t('common.notes')}
-          </Text>
-          <Text style={{ fontSize: 14, color: theme.textSecondary, lineHeight: 20 }}>
-            {selectedSupplier.notes}
-          </Text>
-        </View>
-      ) : null}
     </View>
   ) : (
     <View style={styles.emptyState}>
-      <Building2 size={64} color={theme.textDisabled} />
+      <Layers size={64} color={theme.textDisabled} />
       <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-        {t('suppliers.noSuppliers')}
+        {t('categories.noCategories')}
       </Text>
     </View>
   );
 
   return (
     <>
-      <Header title={t('suppliers.title')} />
+      <Header title={t('categories.title')} />
       <DripContainer
         leftPanel={leftPanel}
         rightPanel={rightPanel}
-        showSecondaryMobile={!!selectedSupplier}
-        onMobileBack={() => setSelectedSupplier(null)}
+        showSecondaryMobile={!!selectedCategory}
+        onMobileBack={() => setSelectedCategory(null)}
         backButtonTitle={t('common.back')}
         childrenPadding={16}
       />
@@ -348,8 +372,8 @@ export default function SuppliersScreen() {
           setShowForm(false);
           resetForm();
         }}
-        title={isEditing ? t('suppliers.editSupplier') : t('suppliers.newSupplier')}
-        headerIcon={<Building2 size={20} color={theme.primary} />}
+        title={isEditing ? t('categories.editCategory') : t('categories.newCategory')}
+        headerIcon={<Layers size={20} color={theme.primary} />}
         footer={
           <View style={styles.formFooterActions}>
             <DripButton
@@ -370,7 +394,7 @@ export default function SuppliersScreen() {
         }
       >
         <DripInput
-          label={t('suppliers.name')}
+          label={t('categories.name')}
           value={nameInput}
           onChangeText={(v) => {
             setNameInput(v);
@@ -379,21 +403,36 @@ export default function SuppliersScreen() {
           error={errorName}
         />
 
-        <DripInput
-          label={t('suppliers.contact')}
-          value={contactInput}
-          onChangeText={setContactInput}
-          placeholder="+62 812 3456 7890"
-          keyboardType="phone-pad"
+        <DripDropdown
+          label={t('categories.parent')}
+          options={parentOptions}
+          value={parentIdInput}
+          onSelect={(val) => setParentIdInput(val)}
         />
 
-        <DripInput
-          label={t('suppliers.notes')}
-          value={notesInput}
-          onChangeText={setNotesInput}
-          multiline
-          numberOfLines={3}
-        />
+        {/* Color Palette Selector */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+          {t('categories.color')}
+        </Text>
+        <View style={styles.colorPalette}>
+          {PRESET_COLORS.map((c) => {
+            const isSelected = colorInput === c;
+            return (
+              <TouchableOpacity
+                key={c}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: c },
+                  isSelected && styles.colorOptionSelected,
+                ]}
+                onPress={() => setColorInput(c)}
+                activeOpacity={0.8}
+              >
+                {isSelected && <Check size={16} color="#FFF" />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </DripSheet>
     </>
   );
@@ -428,6 +467,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  colorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  colorBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
   cardInfo: {
     flex: 1,
   },
@@ -436,7 +485,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 2,
   },
   cardActions: {
@@ -494,6 +543,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
     textAlign: 'center',
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  colorPalette: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  colorOption: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#FFF',
+    elevation: 4,
   },
   formFooterActions: {
     flexDirection: 'row',

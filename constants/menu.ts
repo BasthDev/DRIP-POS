@@ -1,15 +1,11 @@
 import {
-  BarChart3,
   Boxes,
   Building2,
+  FolderTree,
   Layers,
   Leaf,
   Package,
-  Receipt,
-  Settings,
   ShoppingBag,
-  Store,
-  Users,
   Utensils
 } from 'lucide-react-native';
 import { UserRole } from './auth/types';
@@ -17,54 +13,16 @@ import { UserRole } from './auth/types';
 export interface MenuItem {
   title: string;
   path: string;
-  icon: any; // Lucide icon reference
-  roles: UserRole[]; // Allowed roles
+  icon: any;
+  roles: UserRole[];
 }
 
 export const DRAWER_MENU_ITEMS: MenuItem[] = [
   {
-    title: 'Dashboard & POS',
+    title: 'POS Terminal',
     path: '/',
     icon: ShoppingBag,
     roles: ['Owner', 'Manager', 'Admin', 'Staff', 'Cashier'],
-  },
-  {
-    title: 'Suppliers',
-    path: '/suppliers',
-    icon: Building2,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
-  {
-    title: 'Warehouse & Stock',
-    path: '/inventory',
-    icon: Boxes,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
-  /* 
-  // Commented out future menu items (preserved for reference):
-  {
-    title: 'Orders & Sales',
-    path: '/orders',
-    icon: Receipt,
-    roles: ['Owner', 'Manager', 'Admin', 'Staff', 'Cashier'],
-  },
-  {
-    title: 'Analytics & Reports',
-    path: '/reports',
-    icon: BarChart3,
-    roles: ['Owner', 'Manager', 'Admin'],
-  },
-  {
-    title: 'Store Branches',
-    path: '/stores',
-    icon: Store,
-    roles: ['Owner', 'Admin'],
-  },
-  {
-    title: 'Staff Management',
-    path: '/staff',
-    icon: Users,
-    roles: ['Owner', 'Admin'],
   },
   {
     title: 'Products',
@@ -76,6 +34,12 @@ export const DRAWER_MENU_ITEMS: MenuItem[] = [
     title: 'Categories',
     path: '/categories',
     icon: Layers,
+    roles: ['Owner', 'Manager', 'Admin'],
+  },
+  {
+    title: 'Category Groups',
+    path: '/category-groups',
+    icon: FolderTree,
     roles: ['Owner', 'Manager', 'Admin'],
   },
   {
@@ -91,10 +55,15 @@ export const DRAWER_MENU_ITEMS: MenuItem[] = [
     roles: ['Owner', 'Manager', 'Admin'],
   },
   {
-    title: 'Settings',
-    path: '/settings',
-    icon: Settings,
-    roles: ['Owner', 'Manager', 'Admin', 'Staff', 'Cashier'],
+    title: 'Suppliers',
+    path: '/suppliers',
+    icon: Building2,
+    roles: ['Owner', 'Manager', 'Admin'],
   },
-  */
+  {
+    title: 'Warehouse & Stock',
+    path: '/inventory',
+    icon: Boxes,
+    roles: ['Owner', 'Manager', 'Admin'],
+  },
 ];
