@@ -1,3 +1,4 @@
+import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
 import { useDrawer } from '@/constants/drawerContext';
 import { DRAWER_MENU_ITEMS } from '@/constants/menu';
@@ -27,8 +28,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const PRIMARY = '#065F46';
-
 type DrawerItemProps = {
   label: string;
   icon: any;
@@ -39,6 +38,7 @@ type DrawerItemProps = {
   isLast?: boolean;
   badge?: number | string;
   theme: any;
+  primaryColor: string;
 };
 
 function DrawerItem({
@@ -51,6 +51,7 @@ function DrawerItem({
   isLast = false,
   badge,
   theme,
+  primaryColor,
 }: DrawerItemProps) {
   const active = pathname === route;
 
@@ -74,7 +75,7 @@ function DrawerItem({
       {IconComponent && (
         <IconComponent
           size={20}
-          color={active ? PRIMARY : theme.textSecondary}
+          color={active ? primaryColor : theme.textSecondary}
           style={nested ? styles.nestedIcon : {}}
         />
       )}
@@ -83,7 +84,7 @@ function DrawerItem({
         style={[
           styles.menuText,
           { color: theme.textSecondary },
-          active && [styles.activeText, { color: PRIMARY }],
+          active && [styles.activeText, { color: primaryColor }],
           nested && styles.nestedText,
         ]}
       >
@@ -96,7 +97,7 @@ function DrawerItem({
         </View>
       )}
 
-      {active && !nested && <View style={styles.activeIndicator} />}
+      {active && !nested && <View style={[styles.activeIndicator, { backgroundColor: primaryColor }]} />}
     </TouchableOpacity>
   );
 }
@@ -107,10 +108,13 @@ interface DripDrawerProps {
 }
 
 export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style }) => {
-  const { theme, colorMode, toggleColorMode } = useTheme(); // Assumes toggleColorMode or toggleTheme exists
-  const { isDrawerOpen, closeDrawer, userRole } = useDrawer();
+  const { theme, colorMode, toggleColorMode } = useTheme();
+  const { isDrawerOpen, closeDrawer } = useDrawer();
+  const { user, signOut } = useAuth();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+
+  const PRIMARY = theme.primary || '#065F46';
 
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
   const DRAWER_WIDTH = SCREEN_WIDTH >= 768 ? SCREEN_WIDTH / 3 : SCREEN_WIDTH * 0.8;
@@ -158,7 +162,21 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
     router.push(path as any);
   };
 
-  const allowedMenuItems = DRAWER_MENU_ITEMS.filter((item) => item.roles.includes(userRole));
+  const handleLogout = async () => {
+    closeDrawer();
+    await signOut();
+    router.replace('/login');
+  };
+
+  const effectiveRole = user?.role || 'Staff';
+  const allowedMenuItems = DRAWER_MENU_ITEMS.filter((item) => 
+    item.roles.includes(effectiveRole)
+  );
+
+  const displayName = user?.name || 'Staff Member';
+  const displayOrg = 'DRIP POS';
+  const displayStore = 'Main Branch';
+  const avatarLetter = (displayName[0] || 'U').toUpperCase();
 
   return (
     <Modal transparent visible={modalVisible} animationType="none" onRequestClose={closeDrawer}>
@@ -190,10 +208,10 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
               </View>
               <View style={styles.storeHeaderText}>
                 <Text style={[styles.storeTitle, { color: theme.text }]} numberOfLines={1}>
-                  Drip Coffee Co.
+                  {displayOrg}
                 </Text>
                 <Text style={[styles.storeSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                  Main Branch POS
+                  {displayStore}
                 </Text>
               </View>
             </View>
@@ -228,6 +246,7 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
                   pathname={pathname}
                   onNavigate={handleNavigation}
                   theme={theme}
+                  primaryColor={PRIMARY}
                 />
               ))}
 
@@ -248,13 +267,13 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
                 ) : (
                   <ChevronDown size={18} color={theme.textSecondary} />
                 )}
-                {isMasterActive && <View style={styles.activeIndicator} />}
+                {isMasterActive && <View style={[styles.activeIndicator, { backgroundColor: PRIMARY }]} />}
               </TouchableOpacity>
 
               {masterOpen && (
                 <View style={styles.subMenuContainer}>
-                  <DrawerItem label="Products" icon={Package} route="/products" pathname={pathname} onNavigate={handleNavigation} nested theme={theme} />
-                  <DrawerItem label="Ingredients" icon={Package} route="/ingredients" pathname={pathname} onNavigate={handleNavigation} nested isLast theme={theme} />
+                  <DrawerItem label="Products" icon={Package} route="/products" pathname={pathname} onNavigate={handleNavigation} nested theme={theme} primaryColor={PRIMARY} />
+                  <DrawerItem label="Ingredients" icon={Package} route="/ingredients" pathname={pathname} onNavigate={handleNavigation} nested isLast theme={theme} primaryColor={PRIMARY} />
                 </View>
               )}
             </View>
@@ -263,25 +282,22 @@ export const DripDrawer: React.FC<DripDrawerProps> = ({ position = 'left', style
           {/* USER FOOTER SECTION */}
           <View style={[styles.userSection, { borderTopColor: theme.border }]}>
             <View style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
+              <View style={[styles.avatar, { backgroundColor: PRIMARY }]}>
+                <Text style={styles.avatarText}>{avatarLetter}</Text>
               </View>
 
               <View style={styles.userDetails}>
-                <Text style={[styles.userName, { color: theme.text }]}>Alex Morgan</Text>
+                <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>{displayName}</Text>
                 <View style={styles.statusContainer}>
                   <View style={styles.statusDot} />
-                  <Text style={[styles.statusText, { color: theme.textSecondary }]}>{userRole.toUpperCase()}</Text>
+                  <Text style={[styles.statusText, { color: theme.textSecondary }]}>{(effectiveRole || 'STAFF').toUpperCase()}</Text>
                 </View>
               </View>
 
               <TouchableOpacity
                 style={styles.logoutButtonRow}
                 activeOpacity={0.8}
-                onPress={() => {
-                  closeDrawer();
-                  // Add logout action here
-                }}
+                onPress={handleLogout}
               >
                 <LogOut size={20} color="#EF4444" />
               </TouchableOpacity>
@@ -431,9 +447,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  activeText: {
-    color: PRIMARY,
-  },
+  activeText: {},
   activeIndicator: {
     position: 'absolute',
     right: 0,
@@ -441,7 +455,6 @@ const styles = StyleSheet.create({
     bottom: 12,
     width: 4,
     borderRadius: 999,
-    backgroundColor: PRIMARY,
   },
   menuItemBadge: {
     backgroundColor: '#EF4444',
@@ -472,7 +485,6 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: PRIMARY,
     alignItems: 'center',
     justifyContent: 'center',
   },

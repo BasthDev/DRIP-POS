@@ -2,11 +2,11 @@ import { useTheme } from '@/constants/colorTheme';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export type ToastType = 'success' | 'error' | 'info';
@@ -161,7 +161,7 @@ export const DripToast: React.FC<DripToastProps> = ({
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    top: 10,
+    top: 50,
     left: 16,
     right: 16,
     zIndex: 9999,

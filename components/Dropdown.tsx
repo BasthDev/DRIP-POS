@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { DripSheet } from './Sheet';
 
-interface DropdownOption {
+export interface DropdownOption {
   label: string;
   value: string;
 }

@@ -1,111 +1,205 @@
+import { DripButton } from '@/components/Button';
 import { DripInput } from '@/components/Input';
+import { DripToast } from '@/components/Toast';
+import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
-import { router } from 'expo-router';
-import { Lock, Mail, User } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Lock, Mail, Store, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import {
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function RegisterScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
-  const [name, setName] = useState('');
+  const { register, loading: authLoading } = useAuth();
+
+  const [fullName, setFullName] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const { width: SCREEN_WIDTH } = Dimensions.get('window');
-  const isTablet = SCREEN_WIDTH >= 768;
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('error');
 
-  const handleRegister = () => {
-    // After successful credential generation, navigate to OTP verification screen
-    router.push('/verify-otp');
+  const handleRegister = async () => {
+    if (!fullName.trim() || !businessName.trim() || !email.trim() || !password.trim()) {
+      setToastMessage('Please fill in all fields.');
+      setToastType('error');
+      setToastVisible(true);
+      return;
+    }
+
+    if (password.length < 6) {
+      setToastMessage('Password must be at least 6 characters.');
+      setToastType('error');
+      setToastVisible(true);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await register(email.trim(), password, fullName.trim(), businessName.trim());
+
+      if (error) {
+        setToastMessage(error.message || 'Registration failed');
+        setToastType('error');
+        setToastVisible(true);
+        return;
+      }
+
+      // Registration successful, navigate to login
+      setToastMessage('Registration successful! Please sign in.');
+      setToastType('success');
+      setToastVisible(true);
+      
+      setTimeout(() => {
+        router.replace('/login');
+      }, 1500);
+    } catch (err: any) {
+      setToastMessage(err.message || 'An unexpected error occurred');
+      setToastType('error');
+      setToastVisible(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
-        <ScrollView contentContainerStyle={[styles.scroll, isTablet && styles.tabletScroll]}>
-          <View style={[styles.card, isTablet && styles.tabletCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            
-            <View style={styles.header}>
-              <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Set up your Drip POS credentials</Text>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <View style={[styles.iconWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Store size={32} color={theme.primary} />
             </View>
-
-            <View style={styles.form}>
-              <DripInput
-                label="Full Name"
-                placeholder="Alex Morgan"
-                value={name}
-                onChangeText={setName}
-                leftIcon={<User size={18} color={theme.textTertiary} />}
-              />
-
-              <DripInput
-                label="Email Address"
-                placeholder="cashier@drip.com"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                leftIcon={<Mail size={18} color={theme.textTertiary} />}
-              />
-
-              <DripInput
-                label="Password"
-                placeholder="••••••••"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                leftIcon={<Lock size={18} color={theme.textTertiary} />}
-              />
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.primaryButton, { backgroundColor: theme.primary }]}
-                onPress={handleRegister}
-              >
-                <Text style={styles.primaryButtonText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.footerRow}>
-              <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/login')}>
-                <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 14 }}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
-
+            <Text style={[styles.title, { color: theme.text }]}>Get Started</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Create your business account to start selling
+            </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+          <View style={styles.form}>
+            <DripInput
+              label="Full Name"
+              value={fullName}
+              onChangeText={setFullName}
+              leftIcon={<User size={18} color={theme.textSecondary} />}
+              autoCapitalize="words"
+            />
+
+            <DripInput
+              label="Business Name"
+              value={businessName}
+              onChangeText={setBusinessName}
+              leftIcon={<Store size={18} color={theme.textSecondary} />}
+              autoCapitalize="words"
+            />
+
+            <DripInput
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              leftIcon={<Mail size={18} color={theme.textSecondary} />}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <DripInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              leftIcon={<Lock size={18} color={theme.textSecondary} />}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <DripButton
+              title="Continue"
+              onPress={handleRegister}
+              loading={loading || authLoading}
+              style={styles.submitBtn}
+            />
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+              Already have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={[styles.loginLink, { color: theme.primary }]}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      <DripToast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onClose={() => setToastVisible(false)}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  tabletScroll: { alignItems: 'center' },
-  card: { width: '100%', borderRadius: 20, padding: 24, borderWidth: 1 },
-  tabletCard: { width: 440 },
-  header: { marginBottom: 24, alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '800' },
-  subtitle: { fontSize: 13, marginTop: 4 },
-  form: { gap: 14 },
-  primaryButton: { height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  primaryButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  iconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  form: {
+    gap: 16,
+  },
+  submitBtn: {
+    marginTop: 8,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+  loginLink: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

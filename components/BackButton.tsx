@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DripBackButtonProps {
   title?: string;
@@ -17,6 +18,7 @@ export const DripBackButton: React.FC<DripBackButtonProps> = ({
 }) => {
   const router = useRouter();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const handlePress = () => {
     if (onPress) {
@@ -32,19 +34,22 @@ export const DripBackButton: React.FC<DripBackButtonProps> = ({
         styles.container,
         {
           backgroundColor: theme.card,
-          borderColor: theme.border,
+          borderBottomColor: theme.border,
+          paddingTop: insets.top > 0 ? insets.top : 10,
         },
         style,
       ]}
     >
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={handlePress}
-        style={styles.touchableContent}
-      >
-        <ArrowLeft size={20} color={theme.text} style={styles.icon} />
-        <Text style={[styles.text, { color: theme.text }]}>{title}</Text>
-      </TouchableOpacity>
+      <View style={styles.innerRow}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handlePress}
+          style={styles.touchableContent}
+        >
+          <ArrowLeft size={20} color={theme.text} style={styles.icon} />
+          <Text style={[styles.text, { color: theme.text }]}>{title}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -52,14 +57,18 @@ export const DripBackButton: React.FC<DripBackButtonProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 56,
-    justifyContent: 'center',
+    borderBottomWidth: 1,
     paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  innerRow: {
+    height: 44,
+    justifyContent: 'center',
   },
   touchableContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start', // Restricts the touch area precisely to the text and icon size
+    alignSelf: 'flex-start',
   },
   icon: {
     marginRight: 12,

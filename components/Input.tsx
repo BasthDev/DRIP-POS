@@ -1,8 +1,7 @@
 import { useTheme } from '@/constants/colorTheme';
 import { Pen } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Animated,
   Keyboard,
   StyleSheet,
   Text,
@@ -33,22 +32,9 @@ export const DripInput: React.FC<DripInputProps> = ({
 }) => {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-
-  const animation = useRef(
-    new Animated.Value(value ? 1 : 0)
-  ).current;
-
   const textInputRef = useRef<TextInput>(null);
 
   const active = isFocused || !!value;
-
-  useEffect(() => {
-    Animated.timing(animation, {
-      toValue: active ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [active]);
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -65,16 +51,6 @@ export const DripInput: React.FC<DripInputProps> = ({
   // Base left offset for floating label when an icon is present
   const baseLeft = 48;
 
-  const labelTranslateY = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -38],
-  });
-
-  const labelScale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.9],
-  });
-
   const labelColor = error
     ? theme.error
     : isFocused
@@ -86,27 +62,20 @@ export const DripInput: React.FC<DripInputProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Label / Placeholder */}
-      <Animated.Text
+      {/* Label / Placeholder (Tanpa Animasi, langsung lompat ke atas jika active) */}
+      <Text
         pointerEvents="none"
         style={[
           styles.label,
           {
             left: baseLeft,
             color: labelColor,
-            transform: [
-              {
-                translateY: labelTranslateY,
-              },
-              {
-                scale: labelScale,
-              },
-            ],
           },
+          active && styles.labelActive,
         ]}
       >
         {label}
-      </Animated.Text>
+      </Text>
 
       {/* Input Container */}
       <TouchableWithoutFeedback onPress={handleContainerPress}>
@@ -124,7 +93,7 @@ export const DripInput: React.FC<DripInputProps> = ({
             isFocused && { borderWidth: 1.5 },
           ]}
         >
-          {/* Left Icon (No background styling, just the raw icon) */}
+          {/* Left Icon */}
           <View style={styles.iconContainerLeft}>{iconToRender}</View>
 
           <TextInput
@@ -175,8 +144,7 @@ export const DripInput: React.FC<DripInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
-    marginBottom: 20,
+    marginTop: 10,
   },
 
   label: {
@@ -185,8 +153,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     zIndex: 10,
-    // @ts-ignore
-    transformOrigin: 'left center',
+  },
+
+  // Style tambahan saat label berada di posisi atas (aktif / ada isi)
+  labelActive: {
+    top: -20,
+    fontSize: 13,
+    transform: [{ scale: 0.9 }],
   },
 
   inputContainer: {

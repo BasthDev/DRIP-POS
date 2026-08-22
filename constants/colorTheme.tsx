@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
   createContext,
   ReactNode,
   useContext,
-  useState,
+  useEffect,
+  useState
 } from 'react';
 
 export type ColorMode = 'dark' | 'light';
@@ -192,6 +194,33 @@ export const ThemeProvider: React.FC<{
     useState<ColorMode>(defaultTheme);
 
   const theme = getTheme(colorMode);
+
+  // Load saved theme preference on mount
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const savedMode = await AsyncStorage.getItem('colorMode');
+        if (savedMode === 'dark' || savedMode === 'light') {
+          setColorMode(savedMode);
+        }
+      } catch (error) {
+        console.error('Failed to load theme preference:', error);
+      }
+    };
+    loadTheme();
+  }, []);
+
+  // Save theme preference when it changes
+  useEffect(() => {
+    const saveTheme = async () => {
+      try {
+        await AsyncStorage.setItem('colorMode', colorMode);
+      } catch (error) {
+        console.error('Failed to save theme preference:', error);
+      }
+    };
+    saveTheme();
+  }, [colorMode]);
 
   const toggleColorMode = () => {
     setColorMode((prev) =>

@@ -2,6 +2,7 @@ import { DripBackButton } from '@/components/BackButton';
 import { useTheme } from '@/constants/colorTheme';
 import React, { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DripContainerProps {
   // Content for the left panel on tablet, or main screen on mobile
@@ -40,6 +41,7 @@ export const DripContainer: React.FC<DripContainerProps> = ({
 }) => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   
   // Tablet breakpoint threshold (e.g., 768px)
   const isTablet = width >= 768;
@@ -47,10 +49,10 @@ export const DripContainer: React.FC<DripContainerProps> = ({
   if (isTablet) {
     // --- TABLET LAYOUT (Left Panel flex 1, Right Panel flex 2) ---
     return (
-      <View style={[styles.tabletContainer, { backgroundColor: theme.background }, style]}>
+      <SafeAreaView style={[styles.tabletContainer, { backgroundColor: theme.background }, style]} edges={['top', 'left', 'right']}>
         {/* Left Panel (Flex 1) */}
         <View style={[styles.leftPanel, { borderColor: theme.border }]}>
-          <View style={{ padding: childrenPadding }}>
+          <View style={{ padding: childrenPadding, flex: 1 }}>
             {leftPanel}
           </View>
         </View>
@@ -64,17 +66,17 @@ export const DripContainer: React.FC<DripContainerProps> = ({
             {rightPanel}
           </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   // --- MOBILE LAYOUT (Stacked screens controlled by state) ---
   return (
-    <View style={[styles.mobileContainer, { backgroundColor: theme.background }, style]}>
+    <SafeAreaView style={[styles.mobileContainer, { backgroundColor: theme.background }, style]} edges={['top', 'left', 'right']}>
       {!showSecondaryMobile ? (
         // Main Screen
         <View style={styles.screenWrapper}>
-          <View style={{ padding: childrenPadding }}>
+          <View style={{ padding: childrenPadding, flex: 1 }}>
             {leftPanel}
           </View>
         </View>
@@ -87,7 +89,7 @@ export const DripContainer: React.FC<DripContainerProps> = ({
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -106,7 +108,6 @@ const styles = StyleSheet.create({
   rightPanel: {
     flex: 1.5,
     height: '100%',
-    // padding: 16,
   },
   rightContent: {
     flex: 1,
@@ -118,10 +119,8 @@ const styles = StyleSheet.create({
   },
   screenWrapper: {
     flex: 1,
-    // padding: 16,
   },
   mobileSecondaryContent: {
     flex: 1,
-    // marginTop: 8,
   },
 });

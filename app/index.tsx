@@ -1,145 +1,233 @@
 import { DripButton } from '@/components/Button';
 import { Header } from '@/components/Header';
+import { useAuth } from '@/constants/auth';
 import { useTheme } from '@/constants/colorTheme';
-import { useDrawer } from '@/constants/drawerContext';
 import { router } from 'expo-router';
-import {
-  Compass,
-  KeyRound,
-  LogIn,
-  Menu,
-  ShieldCheck,
-  Store,
-  UserPlus
-} from 'lucide-react-native';
+import { BarChart3, Building2, Package, ShoppingCart } from 'lucide-react-native';
 import React from 'react';
-import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function UIIndexShowcase() {
-  const { theme, colorMode, toggleColorMode } = useTheme();
-  const { openDrawer } = useDrawer();
+const QUICK_ACTIONS = [
+  {
+    id: 'suppliers',
+    title: 'Suppliers',
+    description: 'Manage supplier relationships',
+    icon: Building2,
+    route: '/suppliers',
+    permission: 'inventory.view' as const,
+  },
+  {
+    id: 'inventory',
+    title: 'Inventory',
+    description: 'Track stock and items',
+    icon: Package,
+    route: '/inventory',
+    permission: 'inventory.view' as const,
+  },
+  {
+    id: 'orders',
+    title: 'Orders',
+    description: 'View and manage orders',
+    icon: ShoppingCart,
+    route: '/orders',
+    permission: 'orders.view' as const,
+  },
+  {
+    id: 'reports',
+    title: 'Reports',
+    description: 'Analytics and insights',
+    icon: BarChart3,
+    route: '/reports',
+    permission: 'reports.view' as const,
+  },
+];
 
-  const { width: SCREEN_WIDTH } = Dimensions.get('window');
-  const isTablet = SCREEN_WIDTH >= 768;
+const index = () => {
+  const { theme } = useTheme();
+  const { user, hasPermission, signOut } = useAuth();
 
-  const navigateTo = (path: string) => {
-    router.push(path as any);
+  const accessibleActions = QUICK_ACTIONS.filter(action => 
+    hasPermission(action.permission)
+  );
+
+  const handleQuickAction = (route: string) => {
+    router.push(route as any);
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <Header
-        title="Drip UI Showcase"
-        subtitle="Design System & Navigation Hub"
-        onLeftPress={openDrawer}
-        rightIcon={<Compass size={20} color={theme.text} />}
-        onRightPress={toggleColorMode}
+    <>
+      <Header 
+        title="Dashboard" 
+        subtitle={`Welcome, ${user?.name || 'User'}`}
       />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* User Info Card */}
+          <View style={[styles.userCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.userInfo}>
+              <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+                <Text style={styles.avatarText}>
+                  {(user?.name || 'U')[0].toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.userDetails}>
+                <Text style={[styles.userName, { color: theme.text }]}>
+                  {user?.name || 'User'}
+                </Text>
+                <Text style={[styles.userRole, { color: theme.textSecondary }]}>
+                  {user?.role || 'Staff'}
+                </Text>
+                <Text style={[styles.userEmail, { color: theme.textTertiary }]}>
+                  {user?.email || ''}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-      <ScrollView contentContainerStyle={[styles.container, isTablet && styles.tabletContainer]}>
-        
-        {/* Intro Card */}
-        <View style={[styles.welcomeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.welcomeTitle, { color: theme.text }]}>Welcome to Drip POS Design System</Text>
-          <Text style={[styles.welcomeSub, { color: theme.textSecondary }]}>
-            Tap any button below to instantly navigate and test the screen layouts across your mobile and tablet views.
-          </Text>
+          {/* Quick Actions */}
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            {accessibleActions.map((action) => {
+              const IconComponent = action.icon;
+              return (
+                <TouchableOpacity
+                  key={action.id}
+                  style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => handleQuickAction(action.route)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.actionIcon, { backgroundColor: theme.primary + '20' }]}>
+                    <IconComponent size={24} color={theme.primary} />
+                  </View>
+                  <Text style={[styles.actionTitle, { color: theme.text }]}>
+                    {action.title}
+                  </Text>
+                  <Text style={[styles.actionDescription, { color: theme.textSecondary }]}>
+                    {action.description}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Recent Activity Placeholder */}
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+          <View style={[styles.activityCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.activityText, { color: theme.textSecondary }]}>
+              No recent activity to display
+            </Text>
+          </View>
+
+          {/* Logout Button */}
+          <DripButton
+            title="Sign Out"
+            onPress={signOut}
+            variant="danger"
+            style={styles.logoutButton}
+          />
         </View>
-
-        {/* Section: Authentication & Onboarding Flows */}
-        <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>AUTHENTICATION & ONBOARDING</Text>
-        
-        <View style={styles.grid}>
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <LogIn size={20} color={theme.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Login Screen</Text>
-            <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>Google & email auth entry.</Text>
-            <DripButton title="View Login" onPress={() => navigateTo('/login')} variant="secondary" style={styles.btn} />
-          </View>
-
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <UserPlus size={20} color={theme.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Register Screen</Text>
-            <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>New account credential setup.</Text>
-            <DripButton title="View Register" onPress={() => navigateTo('/register')} variant="secondary" style={styles.btn} />
-          </View>
-
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <ShieldCheck size={20} color={theme.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Verify OTP</Text>
-            <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>6-digit verification code pin.</Text>
-            <DripButton title="View OTP" onPress={() => navigateTo('/verify-otp')} variant="secondary" style={styles.btn} />
-          </View>
-
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <Store size={20} color={theme.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Store Setup</Text>
-            <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>Branch location & info form.</Text>
-            <DripButton title="View Store Setup" onPress={() => navigateTo('/store-setup')} variant="secondary" style={styles.btn} />
-          </View>
-
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <KeyRound size={20} color={theme.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Forgot Password</Text>
-            <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>Pin recovery & reset link.</Text>
-            <DripButton title="View Reset" onPress={() => navigateTo('/forgot-password')} variant="secondary" style={styles.btn} />
-          </View>
-        </View>
-
-        {/* Section: Drawer & Navigation Test */}
-        <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>GLOBAL COMPONENTS</Text>
-        
-        <View style={[styles.cardWide, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.wideRow}>
-            <View style={[styles.iconBox, { backgroundColor: theme.primary + '15' }]}>
-              <Menu size={20} color={theme.primary} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Role-Based Navigation Drawer</Text>
-              <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                Tap the top-left menu icon in the header above to test the slide-in drawer with live dark mode toggle and role filtering.
-              </Text>
-            </View>
-          </View>
-          <DripButton title="Open Drawer Directly" onPress={openDrawer} variant="primary" style={{ marginTop: 14 }} />
-        </View>
-
       </ScrollView>
-    </SafeAreaView>
+    </>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { padding: 16, gap: 16, paddingBottom: 40 },
-  tabletContainer: { paddingHorizontal: 40 },
-  welcomeCard: { padding: 20, borderRadius: 16, borderWidth: 1 },
-  welcomeTitle: { fontSize: 18, fontWeight: '800', marginBottom: 6 },
-  welcomeSub: { fontSize: 13, lineHeight: 18 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginTop: 8, marginLeft: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '48%', flexGrow: 1, padding: 16, borderRadius: 16, borderWidth: 1, justifyContent: 'space-between' },
-  cardWide: { width: '100%', padding: 16, borderRadius: 16, borderWidth: 1 },
-  wideRow: { flexDirection: 'row', alignItems: 'center' },
-  iconBox: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignContent: 'center', alignItems: 'center', marginBottom: 12 },
-  cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  cardDesc: { fontSize: 12, marginBottom: 14 },
-  btn: { marginTop: 'auto' },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+  },
+  userCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  userDetails: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  userRole: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 24,
+    marginHorizontal: -8,
+  },
+  actionCard: {
+    width: '48%',
+    margin: 8,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  actionDescription: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  activityCard: {
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  activityText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    marginBottom: 24,
+  },
 });
+
+export default index;
